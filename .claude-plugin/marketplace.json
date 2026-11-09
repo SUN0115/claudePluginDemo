@@ -1,0 +1,15 @@
+{
+  "name": "my-claude-kit",
+  "owner": {
+    "name": "ian"
+  },
+  "description": "練習用 marketplace：示範一個 plugin 如何同時包含 skill、slash command、subagent、hook 與 MCP server。",
+  "plugins": [
+    {
+      "name": "dev-buddy",
+      "source": "./plugins/dev-buddy",
+      "version": "0.1.0",
+      "description": "練習用 plugin：commit-msg skill、explain 指令、reviewer agent、安全 hook、dev-tools MCP server。"
+    }
+  ]
+}

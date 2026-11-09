@@ -1,0 +1,8 @@
+{
+  "name": "dev-buddy",
+  "version": "0.1.0",
+  "description": "練習用 plugin：commit-msg skill、explain 指令、reviewer agent、安全 hook、dev-tools MCP server。",
+  "author": { "name": "ian" },
+  "license": "MIT",
+  "keywords": ["practice", "skill", "hook", "mcp", "agent"]
+}
