@@ -22,6 +22,7 @@ disable-model-invocation: true
 6. 審查程式：
 	- 改動在 10 個檔案以內，且只動前端或只動後端：使用 `workflow-core:code-review` skill。
 	- 改動超過 10 個檔案，或同時動到前端與後端：呼叫 `workflow-core:code-reviewer` agent。
+	- 若改動涉及登入、權限、使用者輸入、檔案上傳或下載、SQL：另外使用 `workflow-core:security-review` skill。
 	- 若有 🔴 等級的問題：列出，請使用者決定要先修還是先 commit。
 7. 準備 commit：
 	- 列出要 stage 的檔案，只包含這張 issue 相關的改動，不使用 `git add -A`。

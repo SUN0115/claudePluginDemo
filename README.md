@@ -30,7 +30,7 @@ Claude Code 認的是**資料夾名稱**：`skills/`、`commands/`、`agents/`�
 |---|---|---|---|
 | Skill | 預設由 **AI** 看 `description` 決定；設 `disable-model-invocation: true` 後只有**你**能觸發 | 你的需求符合描述時，或你輸入指令時 | `issue-start`、`issue-finish`：issue 開工與收尾流程（只能由你觸發） |
 | Slash command | **你**輸入 `/dev-buddy:explain` | 你想用就用 | `explain`：白話解說一個檔案 |
-| Subagent | AI 或你指定 | 需要獨立審查時 | `reviewer`：只能讀檔的審查員 |
+| Subagent | AI 或你指定 | 需要獨立審查時 | `reviewer`：只能讀檔的審查員（需點名才使用） |
 | Hook | **Claude Code 自動執行**，AI 無法略過 | 特定事件發生時 | 開場注入規則、擋 `git push --force` |
 | MCP server | AI 呼叫它提供的 tool | 需要新能力時 | `uuid`、`taipei_time` |
 
@@ -60,15 +60,21 @@ claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 | SessionStart hook | 「你剛開場收到什麼規則？」 | AI 說出 dev-buddy 的兩條規則 |
 | Skill | 在有 GitHub issue 的專案輸入 `/dev-buddy:issue-start <編號>` | AI 讀取 issue、列出驗收條件、提出計畫後停下等你確認 |
 | Slash command | `/dev-buddy:explain README.md` | 照四段格式解說 README |
-| Subagent | 「用 reviewer agent 審查 plugins/dev-buddy/mcp/server.mjs」 | 出現 reviewer 的條列報告 |
+| Subagent | 「用 dev-buddy reviewer 審查 plugins/dev-buddy/mcp/server.mjs」 | 出現 reviewer 的條列報告 |
 | PreToolUse hook | 「幫我執行 git push --force」 | 指令被擋下，AI 轉述擋下的原因 |
 | MCP | 「給我 3 個 uuid」、「台北現在幾點」 | AI 呼叫 dev-tools 的工具；輸入 `/mcp` 可以看到 dev-tools 已連線 |
 
 ## 修改後怎麼更新
 
-1. 改 `plugin.json` 和 `marketplace.json` 的版本號
-2. 在 Claude Code 執行 `/plugin marketplace update my-claude-kit`
-3. 開新 session
+1. 改 `plugin.json` 和 `marketplace.json` 的版本號（兩邊要一致）。
+2. 在終端機執行 `claude plugin validate .`，確認格式正確。
+3. 在終端機依序執行：
+	```
+	claude plugin marketplace update my-claude-kit
+	claude plugin update dev-buddy@my-claude-kit
+	```
+	第 2 行應顯示 `updated from <舊版> to <新版>`。只更新 marketplace 不會更新已安裝的 plugin。
+4. 開新 session，新版本才會載入。
 
 ## 自己驗證
 

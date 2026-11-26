@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: 唯讀的程式碼審查員。使用者要求「審查」、「review」、「幫我看看這段程式有沒有問題」時使用。只讀不改，產出條列式審查報告。
+description: 練習用的唯讀程式碼審查員，只讀不改，產出條列式審查報告。只在使用者明確點名「dev-buddy reviewer」時使用；一般的審查或 review 需求改用 workflow-core:code-reviewer。
 tools: Read, Grep, Glob
 ---
 
