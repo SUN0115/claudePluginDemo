@@ -10,7 +10,8 @@ my-claude-kit/
 ├── .claude-plugin/marketplace.json    marketplace 目錄：列出有哪些 plugin
 └── plugins/dev-buddy/
     ├── .claude-plugin/plugin.json     plugin 身分證：名稱、版本、描述
-    ├── skills/commit-msg/SKILL.md     【Skill】AI 自己判斷要不要用
+    ├── skills/issue-start/SKILL.md    【Skill】開始處理 issue（只能由你觸發）
+    ├── skills/issue-finish/SKILL.md   【Skill】收尾 issue 並開 PR（只能由你觸發）
     ├── commands/explain.md            【Slash command】你輸入指令才觸發
     ├── agents/reviewer.md             【Subagent】派出去的唯讀審查員
     ├── hooks/hooks.json               【Hook】哪個事件跑哪支程式
@@ -27,7 +28,7 @@ Claude Code 認的是**資料夾名稱**：`skills/`、`commands/`、`agents/`�
 
 | 零件 | 誰觸發 | 什麼時候 | 這裡的例子 |
 |---|---|---|---|
-| Skill | **AI** 看 `description` 自己決定 | 你的需求符合描述時 | `commit-msg`：產生 commit message |
+| Skill | 預設由 **AI** 看 `description` 決定；設 `disable-model-invocation: true` 後只有**你**能觸發 | 你的需求符合描述時，或你輸入指令時 | `issue-start`、`issue-finish`：issue 開工與收尾流程（只能由你觸發） |
 | Slash command | **你**輸入 `/dev-buddy:explain` | 你想用就用 | `explain`：白話解說一個檔案 |
 | Subagent | AI 或你指定 | 需要獨立審查時 | `reviewer`：只能讀檔的審查員 |
 | Hook | **Claude Code 自動執行**，AI 無法略過 | 特定事件發生時 | 開場注入規則、擋 `git push --force` |
@@ -57,7 +58,7 @@ claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 | 要測的零件 | 你說什麼 | 預期結果 |
 |---|---|---|
 | SessionStart hook | 「你剛開場收到什麼規則？」 | AI 說出 dev-buddy 的兩條規則 |
-| Skill | 先 `git add` 一些檔案，再說「幫我寫 commit message」 | AI 載入 commit-msg，產生 `✨ feat(...)` 格式 |
+| Skill | 在有 GitHub issue 的專案輸入 `/dev-buddy:issue-start <編號>` | AI 讀取 issue、列出驗收條件、提出計畫後停下等你確認 |
 | Slash command | `/dev-buddy:explain README.md` | 照四段格式解說 README |
 | Subagent | 「用 reviewer agent 審查 plugins/dev-buddy/mcp/server.mjs」 | 出現 reviewer 的條列報告 |
 | PreToolUse hook | 「幫我執行 git push --force」 | 指令被擋下，AI 轉述擋下的原因 |
