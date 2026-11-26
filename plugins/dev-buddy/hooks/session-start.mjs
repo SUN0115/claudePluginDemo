@@ -13,3 +13,5 @@ process.stdout.write(message.trim() + '\n');
 
 // exit 0 = 正常結束。SessionStart 沒有東西可以擋，所以永遠是 0。
 process.exit(0);
+
+
