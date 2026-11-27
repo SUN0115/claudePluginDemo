@@ -1,16 +1,10 @@
 {
 	"dev-buddy-session-start": {
 		"SessionStart": [
-			{ "type": "command", "command": "node ./antigravity/hook-adapter.mjs session ./hooks/session-start.mjs", "timeout": 10 }
-		]
-	},
-	"dev-buddy-bash-guard": {
-		"PreToolUse": [
 			{
-				"matcher": "run_command",
-				"hooks": [
-					{ "type": "command", "command": "node ./antigravity/hook-adapter.mjs pre ./hooks/bash-guard.mjs", "timeout": 10 }
-				]
+				"type": "command",
+				"command": "node ./antigravity/hook-adapter.mjs session ./hooks/session-start.mjs",
+				"timeout": 10
 			}
 		]
 	}
