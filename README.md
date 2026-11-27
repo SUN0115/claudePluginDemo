@@ -1,7 +1,7 @@
 # my-claude-kit
 
-練習用的 Claude Code plugin marketplace，裡面只有一個 plugin：**dev-buddy**。
-它用最小的例子示範一個 plugin 能包含的 5 種零件。dev-buddy 也能安裝到 Google Antigravity，見〈安裝到 Antigravity〉。
+個人的 Claude Code plugin marketplace，裡面只有一個 plugin：**dev-buddy**。
+dev-buddy 提供 GitHub issue 的開工與收尾工作流，搭配 fullstack-dev-kit 的 workflow-core 使用，並附上一個 plugin 能包含的 5 種零件範例。dev-buddy 也能安裝到 Google Antigravity，見〈安裝到 Antigravity〉。
 
 ## 檔案地圖
 
@@ -17,8 +17,6 @@ my-claude-kit/
     ├── claude-agents/reviewer.md      【Subagent】派出去的唯讀審查員（唯一來源）
     ├── hooks/hooks.json               【Hook】哪個事件跑哪支程式
     ├── hooks/session-start.mjs          開場注入規則
-    ├── hooks/bash-guard.mjs             擋危險指令
-    ├── hooks/bash-guard.test.mjs        hook 的測試
     ├── .mcp.json                      【MCP】要啟動哪個 MCP server
     ├── mcp/server.mjs                   手寫的最小 MCP server
     │
@@ -40,7 +38,7 @@ Subagent 是例外：`plugin.json` 的 `agents` 欄位列出 `claude-agents/` �
 | Skill | 預設由 **AI** 看 `description` 決定；設 `disable-model-invocation: true` 後只有**你**能觸發 | 你的需求符合描述時，或你輸入指令時 | `issue-start`、`issue-finish`：issue 開工與收尾流程（只能由你觸發） |
 | Slash command | **你**輸入 `/dev-buddy:explain` | 你想用就用 | `explain`：白話解說一個檔案 |
 | Subagent | AI 或你指定 | 需要獨立審查時 | `reviewer`：只能讀檔的審查員（需點名才使用） |
-| Hook | **Claude Code 自動執行**，AI 無法略過 | 特定事件發生時 | 開場注入規則、擋 `git push --force` |
+| Hook | **Claude Code 自動執行**，AI 無法略過 | 特定事件發生時 | 開場注入規則（危險指令由 workflow-core 的 hook 擋） |
 | MCP server | AI 呼叫它提供的 tool | 需要新能力時 | `uuid`、`taipei_time` |
 
 ## 安裝
@@ -68,7 +66,7 @@ claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 	```
 	agy plugin install D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 	```
-2. 執行 `agy plugin list`，確認 dev-buddy 狀態為 `enabled`，並列出 2 個 hooks 與 1 個 MCP server。
+2. 執行 `agy plugin list`，確認 dev-buddy 狀態為 `enabled`，並列出 1 個 hook 與 1 個 MCP server。
 
 更新時先執行 `agy plugin uninstall dev-buddy`，再重複步驟 1。
 
@@ -84,7 +82,6 @@ claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 | Skill | 在有 GitHub issue 的專案輸入 `/dev-buddy:issue-start <編號>` | AI 讀取 issue、列出驗收條件、提出計畫後停下等你確認 |
 | Slash command | `/dev-buddy:explain README.md` | 照四段格式解說 README |
 | Subagent | 「用 dev-buddy reviewer 審查 plugins/dev-buddy/mcp/server.mjs」 | 出現 reviewer 的條列報告 |
-| PreToolUse hook | 「幫我執行 git push --force」 | 指令被擋下，AI 轉述擋下的原因 |
 | MCP | 「給我 3 個 uuid」、「台北現在幾點」 | AI 呼叫 dev-tools 的工具；輸入 `/mcp` 可以看到 dev-tools 已連線 |
 
 ## 修改後怎麼更新
@@ -100,10 +97,6 @@ claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 4. 開新 session，新版本才會載入。
 
 ## 自己驗證
-
-```
-node --test "plugins/dev-buddy/hooks/*.test.mjs"
-```
 
 手動測 MCP server（每行一則 JSON-RPC 訊息）：
 

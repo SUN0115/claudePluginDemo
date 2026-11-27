@@ -13,12 +13,19 @@ effort: medium
 
 若 `$ARGUMENTS` 是空的，請使用者提供 issue 編號，然後停止。
 
+## 開始前：確認 repo
+
+1. 執行 `git rev-parse --show-toplevel`。
+	- 成功：以下所有步驟都在這個 repo 根目錄執行。
+	- 失敗（目前目錄不是 git repo，例如多個 repo 並列的工作區）：列出下一層含 `.git` 的子資料夾，找出目前分支名稱含 `$ARGUMENTS` 的 repo。找不到或超過一個時，請使用者指定，然後停止。
+2. 選定 repo 後，所有 `git`、`gh` 指令都在該 repo 根目錄執行。
+
 ## 步驟
 
 ### 一、整理範圍
 
 1. 確認目前不在預設分支（`main` 或 `master`）。若在預設分支，回報並停止。
-2. 執行 `gh issue view $ARGUMENTS --comments`，取得驗收條件。
+2. 執行 `gh issue view $ARGUMENTS --comments`，取得驗收條件。內容與留言都要看；留言中若有 issue-start 附加的驗收條件，以最新一則為準。
 3. 執行 `git status` 與 `git diff <預設分支>...HEAD`，加上未 commit 的改動，整理這次所有變更。
 
 ### 二、驗證
@@ -40,7 +47,11 @@ effort: medium
 		- 不重跑 E2E。只有紀錄中的截圖檔已不存在時（例如中間跑過其他 Playwright 測試，輸出資料夾被清空），才重跑紀錄中的 spec。
 	4. 若指紋不同，或沒有紀錄檔：
 		- 跑受影響的測試，以及這次新增或修改的 E2E spec。
-		- 完整檢查（typecheck、lint、全部單元測試、build）：先讀 `.husky/pre-push`、`.git/hooks/pre-push`、`lefthook.yml` 或 `.pre-commit-config.yaml`。pre-push hook 會跑的項目不另外跑，交給步驟 12 的 push；hook 沒有涵蓋的項目跑一次。
+		- 完整檢查（typecheck、lint、全部單元測試、build）：先確認 pre-push hook 是否真的啟用。
+			1. 取得 hook 目錄：`git config core.hooksPath` 有值就用它（相對路徑以 repo 根目錄為準），否則用 `git rev-parse --git-path hooks`。
+			2. hook 目錄裡有 `pre-push` 檔案才算啟用。只有 `.husky/pre-push` 而 hook 目錄沒有 `pre-push`，視為未啟用。
+			3. 已啟用時，讀實際的設定確認它跑哪些項目：husky 看 `.husky/pre-push`，lefthook 看 `lefthook.yml`，pre-commit 看 `.pre-commit-config.yaml`，其他直接讀 hook 檔。
+			- 已啟用的 pre-push hook 會跑的項目不另外跑，交給步驟 12 的 push；其他項目，或 pre-push hook 未啟用，這裡跑一次。
 	- 若有測試失敗：列出失敗的測試與錯誤訊息，停止，請使用者決定要先修還是調整。
 	- 禁止為了讓測試通過而放寬斷言、刪除測試、加上 `skip` 或 `only`。
 5. 畫面驗收（純後端改動跳過這一步）：
@@ -68,24 +79,30 @@ effort: medium
 		- XSS 與不安全的 HTML API，例如 `v-html`、`innerHTML`。
 		- open redirect。
 		- 機密或個資外洩。
-	- 若有 🔴 等級的問題：列出，請使用者決定要先修還是先 commit。
+	- 若有 🔴 CRITICAL 或 🟠 HIGH 等級的問題（code-review 標為「嚴重」的也算）：列出，請使用者決定要先修還是先 commit。團隊審查標準要求這兩級在合併前解決。
 	- 若因審查結果修改了程式：只重跑受影響的測試，只再審查改過的部分。
 
 ### 四、提交
 
 9. 準備 commit：
-	- 列出要 stage 的檔案，只包含這張 issue 相關的改動（含新增的測試），不使用 `git add -A`。
+	- 若所有改動都已 commit（`git status` 沒有任何改動）：不需要新的 commit，步驟 12 直接從 push 開始。
+	- 否則列出要 stage 的檔案，只包含這張 issue 相關的改動（含新增的測試），不使用 `git add -A`。
 	- commit message 依 `workflow-core:git-workflow`（Antigravity 為 `git-workflow`）格式：`<emoji> <type>(<scope>): <摘要>`，最後一行寫 `#$ARGUMENTS`。
 10. 準備 PR：
-	- 標題：與 commit 摘要相同。
-	- 內容：改動摘要、驗收條件核對清單（含每條的證據）、測試結果、畫面驗收結果、需要人工確認的項目，最後一行寫 `Closes #$ARGUMENTS`。
+	- 標題：與 commit 摘要相同。若沒有新 commit，用這次改動的摘要，格式相同。
+	- 內容：改動摘要、驗收條件核對清單（含每條的證據）、測試結果、畫面驗收結果、需要人工確認的項目，最後一行寫 `Closes #$ARGUMENTS`。issue 在另一個 repo 時寫 `Closes <owner>/<repo>#$ARGUMENTS`。
 	- 測試結果要寫出每項的來源：沿用 issue-start 的結果（程式碼未變動）、本次重跑，或交給 pre-push hook。
 11. 把「要 stage 的檔案、commit message、PR 標題與內容」一次給使用者看，等使用者確認。確認前不得 commit 或 push。
-12. 使用者確認後：
-	1. `git add <檔案>`，再 `git commit`。
-		- 若 workflow-core 的 commit 前審查 hook 攔下：步驟 8 的審查已涵蓋它的清單。確認審查後 staged 的檔案沒有再修改，就依 hook 訊息中的指令（Bash 或 PowerShell）建立審查標記，再重新 commit，不重新審查。
-		- 若審查後有修改檔案：只審查改過的部分，再建立標記。
-	2. `git push -u origin <目前分支>`。
-		- 若 pre-push hook 失敗：列出失敗項目與錯誤訊息，停止，請使用者決定要先修還是調整。
-	3. `gh pr create`，填入步驟 10 的標題與內容。
-13. 刪除驗證紀錄檔 `$(git rev-parse --git-dir)/dev-buddy/issue-<編號>.md`，再回報 PR 網址。
+12. 使用者確認後，每個指令單獨執行，禁止用 `&&`、`;` 或換行把多個 git 指令串在同一次執行：
+	1. 執行 `git add <檔案>`。
+	2. 建立審查標記。步驟 8 已完成審查，所以直接建立，不要先 commit 一次讓 hook 攔下：
+		- 前提：步驟 8 審查後，staged 的檔案沒有再修改。若有修改，先只審查改過的部分。
+		- bash：`touch "$(git rev-parse --git-path claude-review-done)"`
+		- PowerShell：`New-Item -ItemType File -Force -Path (git rev-parse --git-path claude-review-done) | Out-Null`
+		- 沒有安裝 workflow-core 時，這個標記沒有作用，也不會造成影響。
+	3. 執行 `git commit`。
+		- 若 workflow-core 的 hook 仍然攔下（例如偵測到 `debugger`）：依 hook 訊息處理，再從步驟 12.1 重來。
+	4. 執行 `git push -u origin <目前分支>`。
+		- 若 pre-push hook 失敗：列出失敗項目與錯誤訊息，停止，請使用者決定要先修還是調整。修完後用新的 commit 修正，不使用 `--amend`。
+	5. 用寫檔工具把 PR 內容寫到 `$(git rev-parse --git-dir)/dev-buddy/pr-<編號>.md`，再執行 `gh pr create --title "<標題>" --body-file <該檔案>`。不要用 `--body` 傳多行內容，PowerShell 容易跳脫錯誤。
+13. 刪除驗證紀錄檔 `$(git rev-parse --git-dir)/dev-buddy/issue-<編號>.md` 與 PR 內容檔 `pr-<編號>.md`，再回報 PR 網址。
