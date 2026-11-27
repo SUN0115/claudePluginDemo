@@ -30,6 +30,10 @@ effort: medium
 		```bash
 		tmp="$(mktemp)" && cp "$(git rev-parse --git-path index)" "$tmp" && GIT_INDEX_FILE="$tmp" git add -A && GIT_INDEX_FILE="$tmp" git write-tree; rm -f "$tmp"
 		```
+		若終端機是 PowerShell（例如 Windows 上的 Antigravity），改用下列等效指令，結果相同：
+		```powershell
+		$tmp = New-TemporaryFile; Copy-Item (git rev-parse --git-path index) $tmp -Force; $env:GIT_INDEX_FILE = $tmp.FullName; git add -A; git write-tree; Remove-Item Env:GIT_INDEX_FILE; Remove-Item $tmp
+		```
 	2. 讀驗證紀錄檔 `$(git rev-parse --git-dir)/dev-buddy/issue-<編號>.md`。`<編號>` 只取數字。
 	3. 若指紋與紀錄相同：程式碼在 issue-start 驗證後沒有變動。
 		- 不重跑單元測試與完整檢查，直接沿用紀錄中的結果。
@@ -42,7 +46,7 @@ effort: medium
 5. 畫面驗收（純後端改動跳過這一步）：
 	- 驗證方式為 `E2E` 的條件：使用 E2E 產生的截圖（檔名 `ac<條件序號>-<英文簡述>.png`）當證據，把截圖給使用者看，不另外開瀏覽器。
 	- 只在以下情況用瀏覽器驗收：條件標為 `人工` 且能在畫面上操作，或條件影響畫面但沒有 E2E 截圖。步驟如下：
-		1. 啟動 dev server。優先使用 Claude 內建瀏覽器：用 `.claude/launch.json` 的設定啟動，沒有設定就依 `package.json` 建立一份。若內建瀏覽器不可用，改用 Claude in Chrome；兩者都不可用時，跳過這一步並在報告註明。
+		1. 啟動 dev server。優先使用 Claude 內建瀏覽器：用 `.claude/launch.json` 的設定啟動，沒有設定就依 `package.json` 建立一份。若內建瀏覽器不可用，改用 Claude in Chrome；兩者都不可用時，跳過這一步並在報告註明。在 Antigravity 中，改用 Antigravity 自己的瀏覽器工具；沒有瀏覽器工具時，跳過這一步並在報告註明。
 		2. 依這些條件逐條操作畫面，每條截 1 張圖給使用者看。
 		3. 檢查 console 錯誤與失敗的網路請求（4xx、5xx）。
 		4. 需要登入時，只能使用專案 seed、fixture 或範例設定檔裡的測試帳號，或請使用者在瀏覽器面板中自行登入。不得使用或詢問使用者的真實密碼。
@@ -57,8 +61,8 @@ effort: medium
 ### 三、審查
 
 8. 審查只做一次，在主對話中進行，不派 subagent：
-	- 使用 `workflow-core:code-review` skill 審查這次所有變更，包含未 commit 的改動。告訴它：測試與檢查已在步驟 4 處理，不要詢問或重跑驗證指令。
-	- 若改動涉及登入、權限、使用者輸入、檔案上傳或下載、SQL：在同一次審查中加入下列安全重點，不另外執行 `workflow-core:security-review`。只回報有具體攻擊路徑、且信心高的問題。
+	- 使用 `workflow-core:code-review`（Antigravity 為 `code-review`）skill 審查這次所有變更，包含未 commit 的改動。告訴它：測試與檢查已在步驟 4 處理，不要詢問或重跑驗證指令。
+	- 若改動涉及登入、權限、使用者輸入、檔案上傳或下載、SQL：在同一次審查中加入下列安全重點，不另外執行 `workflow-core:security-review`（Antigravity 為 `security-review`）。只回報有具體攻擊路徑、且信心高的問題。
 		- 注入：SQL、command、路徑、template。
 		- 認證繞過、權限提升、session 或 token 驗證錯誤。
 		- XSS 與不安全的 HTML API，例如 `v-html`、`innerHTML`。
@@ -71,7 +75,7 @@ effort: medium
 
 9. 準備 commit：
 	- 列出要 stage 的檔案，只包含這張 issue 相關的改動（含新增的測試），不使用 `git add -A`。
-	- commit message 依 `workflow-core:git-workflow` 格式：`<emoji> <type>(<scope>): <摘要>`，最後一行寫 `#$ARGUMENTS`。
+	- commit message 依 `workflow-core:git-workflow`（Antigravity 為 `git-workflow`）格式：`<emoji> <type>(<scope>): <摘要>`，最後一行寫 `#$ARGUMENTS`。
 10. 準備 PR：
 	- 標題：與 commit 摘要相同。
 	- 內容：改動摘要、驗收條件核對清單（含每條的證據）、測試結果、畫面驗收結果、需要人工確認的項目，最後一行寫 `Closes #$ARGUMENTS`。

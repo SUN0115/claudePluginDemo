@@ -22,7 +22,7 @@ effort: high
 3. 讀相關程式碼，找出要修改的位置與可重用的既有函式。
 4. 確認專案現有的測試工具：讀 `package.json` 的 `scripts` 與 devDependencies，找 `playwright.config.*`、`vitest.config.*`、`jest.config.*`、`pytest.ini`、`pyproject.toml`，以及既有測試的資料夾與命名方式。
 5. 提出實作計畫，內容包含：
-	- 分支名稱：依 `workflow-core:git-workflow` 規則，格式 `feature/$ARGUMENTS-<英文簡述>`；修 bug 用 `bugfix/$ARGUMENTS-<英文簡述>`。
+	- 分支名稱：依 `workflow-core:git-workflow`（Antigravity 為 `git-workflow`）規則，格式 `feature/$ARGUMENTS-<英文簡述>`；修 bug 用 `bugfix/$ARGUMENTS-<英文簡述>`。
 	- 要修改或新增的檔案。
 	- 每條驗收條件對應到哪個改動。
 	- 每條驗收條件的**驗證方式**，從下列選一種：
@@ -64,7 +64,11 @@ effort: high
 		```bash
 		tmp="$(mktemp)" && cp "$(git rev-parse --git-path index)" "$tmp" && GIT_INDEX_FILE="$tmp" git add -A && GIT_INDEX_FILE="$tmp" git write-tree; rm -f "$tmp"
 		```
-	2. 執行 `mkdir -p "$(git rev-parse --git-dir)/dev-buddy"`。
+		若終端機是 PowerShell（例如 Windows 上的 Antigravity），改用下列等效指令，結果相同：
+		```powershell
+		$tmp = New-TemporaryFile; Copy-Item (git rev-parse --git-path index) $tmp -Force; $env:GIT_INDEX_FILE = $tmp.FullName; git add -A; git write-tree; Remove-Item Env:GIT_INDEX_FILE; Remove-Item $tmp
+		```
+	2. 建立紀錄資料夾：bash 執行 `mkdir -p "$(git rev-parse --git-dir)/dev-buddy"`；PowerShell 執行 `New-Item -ItemType Directory -Force (Join-Path (git rev-parse --git-dir) dev-buddy)`。
 	3. 寫入驗證紀錄檔 `$(git rev-parse --git-dir)/dev-buddy/issue-<編號>.md`。`<編號>` 只取數字。這個檔案在 `.git` 資料夾內，不會被 commit。內容格式：
 		```
 		fingerprint: <工作區指紋>
@@ -74,4 +78,4 @@ effort: high
 		screenshots: <截圖檔路徑，一行一個>
 		```
 8. 完成後回報：改了哪些檔案、新增哪些測試、測試結果與截圖路徑。
-9. 提醒使用者：先自己測試，測完再執行 `/dev-buddy:issue-finish $ARGUMENTS`。若自己測試時改了程式，issue-finish 會偵測到並重跑受影響的測試。
+9. 提醒使用者：先自己測試，測完再執行 `/dev-buddy:issue-finish $ARGUMENTS`（Antigravity 為 `/issue-finish $ARGUMENTS`）。若自己測試時改了程式，issue-finish 會偵測到並重跑受影響的測試。
