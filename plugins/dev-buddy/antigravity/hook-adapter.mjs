@@ -7,7 +7,7 @@
 // 兩邊協定差異（轉接器負責翻譯）：
 //   輸入  Claude：{ tool_name: "Bash", tool_input: { command } }
 //         Antigravity：{ toolCall: { name: "run_command", args: { CommandLine } }, workspacePaths: [...] }
-//   擋下  Claude：exit 2 + stderr
+//   擋下  Claude：exit 2 + stderr，或 exit 0 + stdout JSON（permissionDecision: deny／decision: block），兩種都支援
 //         Antigravity：一定要 exit 0，stdout 印 {"decision":"deny","reason":"..."}；非 0 會被忽略＝放行
 //   注入  Claude：SessionStart 的 stdout 直接進上下文
 //         Antigravity：stdout 印 {"injectSteps":[{"systemMessage":{"systemMessage":"..."}}]}
@@ -30,18 +30,25 @@ const SCRIPT_TIMEOUT_MS = 18_000;
 
 // - Antigravity 工具名 → Claude Code 工具名與輸入欄位
 // ?? 同一個 Antigravity，IDE 與 CLI（agy）的檔案工具名不同：IDE 用 view_file／write_to_file，CLI 用 read_file／write_file（2026-11 實測 agy 1.3.6）
+// ?? 寫入內容欄位：CLI 的 Content／Target／Replacement 已實測；IDE 的 CodeContent／ReplacementContent／ReplacementChunks 依文件推測，未實測
+// > Windows 上 run_command 實際用 PowerShell 執行，所以回報 PowerShell，讓 hook 用 PowerShell 語法解析指令
+const SHELL_TOOL = process.platform === 'win32' ? 'PowerShell' : 'Bash';
 const TOOL_MAP = {
-	run_command: (a) => ({ tool_name: 'Bash', tool_input: { command: a.CommandLine ?? '' } }),
+	run_command: (a) => ({ tool_name: SHELL_TOOL, tool_input: { command: a.CommandLine ?? '' } }),
 	// > CLI
 	read_file: (a) => ({ tool_name: 'Read', tool_input: { file_path: a.Path ?? '' } }),
-	write_file: (a) => ({ tool_name: 'Write', tool_input: { file_path: a.Path ?? '' } }),
-	edit_file: (a) => ({ tool_name: 'Edit', tool_input: { file_path: a.Path ?? '' } }),
+	write_file: (a) => ({ tool_name: 'Write', tool_input: { file_path: a.Path ?? '', content: a.Content ?? '' } }),
+	edit_file: (a) => ({ tool_name: 'Edit', tool_input: { file_path: a.Path ?? '', old_string: a.Target ?? '', new_string: a.Replacement ?? '' } }),
 	// > IDE
 	view_file: (a) => ({ tool_name: 'Read', tool_input: { file_path: a.AbsolutePath ?? '' } }),
 	find_by_name: (a) => ({ tool_name: 'Glob', tool_input: { pattern: a.Pattern ?? '', path: a.SearchDirectory ?? '' } }),
-	write_to_file: (a) => ({ tool_name: 'Write', tool_input: { file_path: a.TargetFile ?? '' } }),
-	replace_file_content: (a) => ({ tool_name: 'Edit', tool_input: { file_path: a.TargetFile ?? '' } }),
-	multi_replace_file_content: (a) => ({ tool_name: 'Edit', tool_input: { file_path: a.TargetFile ?? '' } }),
+	grep_search: (a) => ({ tool_name: 'Grep', tool_input: { pattern: a.Query ?? '', path: a.SearchPath ?? '' } }),
+	write_to_file: (a) => ({ tool_name: 'Write', tool_input: { file_path: a.TargetFile ?? '', content: a.CodeContent ?? a.Content ?? '' } }),
+	replace_file_content: (a) => ({ tool_name: 'Edit', tool_input: { file_path: a.TargetFile ?? '', new_string: a.ReplacementContent ?? a.Replacement ?? '' } }),
+	multi_replace_file_content: (a) => ({
+		tool_name: 'MultiEdit',
+		tool_input: { file_path: a.TargetFile ?? '', edits: (a.ReplacementChunks ?? []).map((c) => ({ new_string: c.ReplacementContent ?? '' })) },
+	}),
 };
 
 // 純函式：把 Antigravity 的 hook 輸入翻成 Claude Code 格式；不認得的工具回傳 null。
@@ -52,19 +59,46 @@ export function toClaudeInput(input) {
 	return { hook_event_name: 'PreToolUse', ...map(input.toolCall.args ?? {}) };
 }
 
+function parseJson(text) {
+	try {
+		const value = JSON.parse(text);
+		return value && typeof value === 'object' ? value : null;
+	} catch {
+		return null;
+	}
+}
+
+// 純函式：把一支 Claude Code hook 腳本的結果，解讀成「擋下的原因」與「要回饋給 AI 的訊息」。
+// Claude Code 有兩套協定，兩種都要認：
+//   1. exit 2 + stderr（舊寫法，例如 dev-buddy 的 bash-guard）
+//   2. exit 0 + stdout JSON（新寫法，例如 workflow-core 的 dispatch.mjs）
+//      PreToolUse：{ hookSpecificOutput: { permissionDecision: "deny", permissionDecisionReason } }
+//      PostToolUse：{ decision: "block", reason }
+//      SessionStart：純文字，或 { hookSpecificOutput: { additionalContext } }
+export function interpret(event, { code, stdout, stderr }) {
+	if (code === 2) return event === 'session' ? {} : { deny: stderr.trim() || '已被 hook 擋下' };
+	const json = parseJson(stdout.trim());
+	const specific = json?.hookSpecificOutput ?? {};
+	if (specific.permissionDecision === 'deny') return { deny: specific.permissionDecisionReason || json.reason || '已被 hook 擋下' };
+	if (json?.decision === 'block' || json?.decision === 'deny') return { deny: json.reason || '已被 hook 擋下' };
+	const context = specific.additionalContext ?? json?.systemMessage;
+	if (context) return { message: String(context) };
+	if (event === 'session' && !json) return { message: stdout };
+	return {};
+}
+
 // 純函式：依事件與各腳本結果，組出 Antigravity 要的 stdout JSON。
 //   results：[{ code, stdout, stderr }]
 export function toAntigravityOutput(event, results) {
+	const parsed = results.map((r) => interpret(event, r));
 	if (event === 'pre') {
-		const blocked = results.find((r) => r.code === 2);
+		const blocked = parsed.find((p) => p.deny);
 		// !! 放行一定要明確回 allow：回 {} 時 Antigravity 會把 subagent 的工具呼叫當成被 hook 拒絕（2026-11 實測 agy 1.3.6）
 		//    allow 只代表 hook 不反對，之後仍走一般權限確認；不要用 auto_approve
-		return blocked ? { decision: 'deny', reason: blocked.stderr.trim() || '已被 hook 擋下' } : { decision: 'allow' };
+		return blocked ? { decision: 'deny', reason: blocked.deny } : { decision: 'allow' };
 	}
-	// > post：Claude 用 exit 2 + stderr 回饋給 AI；session：Claude 用 stdout 注入上下文
-	const texts = results
-		.map((r) => (event === 'post' ? (r.code === 2 ? r.stderr : '') : r.stdout).trim())
-		.filter(Boolean);
+	// > post：Claude 的「擋下」在工具執行後只能當警告；session：注入開場訊息
+	const texts = parsed.map((p) => (p.deny ?? p.message ?? '').trim()).filter(Boolean);
 	if (texts.length === 0) return {};
 	return { injectSteps: [{ systemMessage: { systemMessage: texts.join('\n\n') } }] };
 }
@@ -163,9 +197,10 @@ async function main() {
 			claudeInput = toClaudeInput(input);
 			// > 不認得的工具直接放行，避免誤擋
 			if (claudeInput) {
-				claudeInput.cwd = workspace;
 				if (event === 'post') claudeInput.hook_event_name = 'PostToolUse';
 				cwd = input.toolCall?.args?.Cwd || workspace;
+				// > cwd 要是指令實際執行的位置：commit 前審查會用它找 git repo
+				claudeInput.cwd = cwd;
 			}
 		}
 
@@ -175,7 +210,7 @@ async function main() {
 				const r = runScript(script, JSON.stringify(claudeInput), existsSync(cwd) ? cwd : PLUGIN_ROOT);
 				results.push(r);
 				// > 與 Claude Code 相同：PreToolUse 只要有一支擋下就不再往下跑
-				if (event === 'pre' && r.code === 2) break;
+				if (event === 'pre' && interpret(event, r).deny) break;
 			}
 		}
 		output = toAntigravityOutput(event, results);

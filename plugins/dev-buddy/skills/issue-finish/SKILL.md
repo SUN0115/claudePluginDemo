@@ -36,7 +36,7 @@ effort: medium
 		```
 	2. 讀驗證紀錄檔 `$(git rev-parse --git-dir)/dev-buddy/issue-<編號>.md`。`<編號>` 只取數字。
 	3. 若指紋與紀錄相同：程式碼在 issue-start 驗證後沒有變動。
-		- 不重跑單元測試與完整檢查，直接沿用紀錄中的結果。
+		- 不重跑單元測試與完整檢查，直接沿用紀錄中的結果。紀錄中標為「pre-push」的項目，交給步驟 12 的 push 執行。
 		- 不重跑 E2E。只有紀錄中的截圖檔已不存在時（例如中間跑過其他 Playwright 測試，輸出資料夾被清空），才重跑紀錄中的 spec。
 	4. 若指紋不同，或沒有紀錄檔：
 		- 跑受影響的測試，以及這次新增或修改的 E2E spec。
@@ -83,7 +83,7 @@ effort: medium
 11. 把「要 stage 的檔案、commit message、PR 標題與內容」一次給使用者看，等使用者確認。確認前不得 commit 或 push。
 12. 使用者確認後：
 	1. `git add <檔案>`，再 `git commit`。
-		- 若 `pre-commit-review` hook 攔下：步驟 8 的審查已涵蓋它的清單。確認審查後 staged 的檔案沒有再修改，就依 hook 的指示建立審查標記，再重新 commit，不重新審查。
+		- 若 workflow-core 的 commit 前審查 hook 攔下：步驟 8 的審查已涵蓋它的清單。確認審查後 staged 的檔案沒有再修改，就依 hook 訊息中的指令（Bash 或 PowerShell）建立審查標記，再重新 commit，不重新審查。
 		- 若審查後有修改檔案：只審查改過的部分，再建立標記。
 	2. `git push -u origin <目前分支>`。
 		- 若 pre-push hook 失敗：列出失敗項目與錯誤訊息，停止，請使用者決定要先修還是調整。
