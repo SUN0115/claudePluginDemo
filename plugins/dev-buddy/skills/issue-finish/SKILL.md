@@ -83,7 +83,7 @@ effort: medium
 11. 把「要 stage 的檔案、commit message、PR 標題與內容」一次給使用者看，等使用者確認。確認前不得 commit 或 push。
 12. 使用者確認後：
 	1. `git add <檔案>`，再 `git commit`。
-		- 若 `pre-commit-review` hook 攔下：步驟 8 的審查已涵蓋它的清單。確認審查後 staged 的檔案沒有再修改，就依 hook 的指示建立審查標記，再重新 commit，不重新審查。
+		- 若 workflow-core 的 commit 前審查 hook 攔下：步驟 8 的審查已涵蓋它的清單。確認審查後 staged 的檔案沒有再修改，就依 hook 訊息中的指令（Bash 或 PowerShell）建立審查標記，再重新 commit，不重新審查。
 		- 若審查後有修改檔案：只審查改過的部分，再建立標記。
 	2. `git push -u origin <目前分支>`。
 		- 若 pre-push hook 失敗：列出失敗項目與錯誤訊息，停止，請使用者決定要先修還是調整。

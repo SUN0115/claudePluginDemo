@@ -64,6 +64,12 @@ test('危險指令：exit 2，且 stderr 有原因', () => {
 	assert.match(r.stderr, /force-push/);
 });
 
+test('PowerShell 工具的危險指令：exit 2', () => {
+	const r = runHook(JSON.stringify({ tool_name: 'PowerShell', tool_input: { command: 'Remove-Item -Recurse -Force dist' } }));
+	assert.equal(r.status, 2);
+	assert.match(r.stderr, /rm-recursive-force/);
+});
+
 test('一般指令：exit 0', () => {
 	const r = runHook(JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'npm test' } }));
 	assert.equal(r.status, 0);

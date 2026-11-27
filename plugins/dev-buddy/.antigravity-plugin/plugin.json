@@ -2,7 +2,7 @@
 	"$schema": "https://antigravity.google/schemas/v1/plugin.json",
 	"name": "dev-buddy",
 	"displayName": "Dev Buddy",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "練習用 plugin：issue-start／issue-finish 工作流 skill、explain、reviewer agent、安全 hook、dev-tools MCP server。",
 	"author": { "name": "ian" },
 	"license": "MIT",
