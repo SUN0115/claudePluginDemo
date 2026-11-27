@@ -1,28 +1,37 @@
 # my-claude-kit
 
 練習用的 Claude Code plugin marketplace，裡面只有一個 plugin：**dev-buddy**。
-它用最小的例子示範一個 plugin 能包含的 5 種零件。
+它用最小的例子示範一個 plugin 能包含的 5 種零件。dev-buddy 也能安裝到 Google Antigravity，見〈安裝到 Antigravity〉。
 
 ## 檔案地圖
 
 ```
 my-claude-kit/
 ├── .claude-plugin/marketplace.json    marketplace 目錄：列出有哪些 plugin
+├── scripts/sync-antigravity-agents.mjs  由 claude-agents/ 產生 Antigravity 版 agents/
 └── plugins/dev-buddy/
     ├── .claude-plugin/plugin.json     plugin 身分證：名稱、版本、描述
     ├── skills/issue-start/SKILL.md    【Skill】開始處理 issue（只能由你觸發）
     ├── skills/issue-finish/SKILL.md   【Skill】收尾 issue 並開 PR（只能由你觸發）
     ├── commands/explain.md            【Slash command】你輸入指令才觸發
-    ├── agents/reviewer.md             【Subagent】派出去的唯讀審查員
+    ├── claude-agents/reviewer.md      【Subagent】派出去的唯讀審查員（唯一來源）
     ├── hooks/hooks.json               【Hook】哪個事件跑哪支程式
     ├── hooks/session-start.mjs          開場注入規則
     ├── hooks/bash-guard.mjs             擋危險指令
     ├── hooks/bash-guard.test.mjs        hook 的測試
     ├── .mcp.json                      【MCP】要啟動哪個 MCP server
-    └── mcp/server.mjs                   手寫的最小 MCP server
+    ├── mcp/server.mjs                   手寫的最小 MCP server
+    │
+    │   以下只給 Antigravity 用
+    ├── .antigravity-plugin/plugin.json  Antigravity 的 plugin 身分證
+    ├── agents/reviewer.md               自動產生，禁止手動修改
+    ├── hooks.json                       Antigravity 的 hook 設定
+    ├── antigravity/hook-adapter.mjs     把 Antigravity 的 hook 協定轉成 Claude Code 格式
+    └── mcp_config.json                  Antigravity 的 MCP 設定
 ```
 
-Claude Code 認的是**資料夾名稱**：`skills/`、`commands/`、`agents/`、`hooks/hooks.json`、`.mcp.json` 放在 plugin 根目錄就會自動載入，不用另外註冊。
+Claude Code 認的是**資料夾名稱**：`skills/`、`commands/`、`hooks/hooks.json`、`.mcp.json` 放在 plugin 根目錄就會自動載入，不用另外註冊。
+Subagent 是例外：`plugin.json` 的 `agents` 欄位列出 `claude-agents/` 裡的檔案，Claude Code 只載入這些檔案。`agents/` 留給 Antigravity。
 
 ## 5 種零件比較
 
@@ -50,6 +59,20 @@ Claude Code 認的是**資料夾名稱**：`skills/`、`commands/`、`agents/`�
 ```
 claude --plugin-dir D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
 ```
+
+## 安裝到 Antigravity
+
+警告：Antigravity 開著時，安裝可能因目錄被占用而失敗。安裝前先關閉 Antigravity。
+
+1. 在終端機執行：
+	```
+	agy plugin install D:/ian/program/pra_proj/my-claude-kit/plugins/dev-buddy
+	```
+2. 執行 `agy plugin list`，確認 dev-buddy 狀態為 `enabled`，並列出 2 個 hooks 與 1 個 MCP server。
+
+更新時先執行 `agy plugin uninstall dev-buddy`，再重複步驟 1。
+
+改了 `claude-agents/reviewer.md` 後，在 repository 根目錄執行 `node scripts/sync-antigravity-agents.mjs`，重新產生 `agents/reviewer.md`。
 
 ## 試用清單
 

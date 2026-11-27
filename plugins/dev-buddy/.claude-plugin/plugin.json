@@ -1,8 +1,9 @@
 {
   "name": "dev-buddy",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "練習用 plugin：issue-start／issue-finish 工作流 skill（含測試、截圖驗收，程式碼未變不重跑測試），explain 指令、reviewer agent、安全 hook、dev-tools MCP server。",
   "author": { "name": "ian" },
   "license": "MIT",
+  "agents": ["./claude-agents/reviewer.md"],
   "keywords": ["practice", "skill", "hook", "mcp", "agent"]
 }
