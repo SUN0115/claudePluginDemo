@@ -27,27 +27,39 @@ const RULES = [
 	{
 		name: 'rm-recursive-force',
 		test: (cmd) => hasRmRecursiveForce(cmd),
-		reason: 'rm 同時帶有遞迴與強制參數（例如 -rf），刪錯就救不回來。請改成刪除明確的單一檔案，或請使用者自己執行。',
+		reason: '刪除指令同時帶有遞迴與強制參數（例如 rm -rf、Remove-Item -Recurse -Force），刪錯就救不回來。請改成刪除明確的單一檔案，或請使用者自己執行。',
 	},
 ];
 
 // 判斷 rm 指令是否同時有「遞迴」和「強制」參數。
 // 不只看 -rf，也能抓到 -r -f、-fr、-Rf、--recursive --force 這些寫法。
+// PowerShell 也會用 rm 以外的名稱刪檔（rm、del 等在 PowerShell 都是 Remove-Item 的別名）。
+// Windows 上的 Antigravity 用 PowerShell 執行指令，所以一併檢查。
+const POWERSHELL_REMOVE = new Set(['remove-item', 'ri', 'del', 'erase', 'rd', 'rmdir']);
+
 function hasRmRecursiveForce(cmd) {
-	// 用 ; && || | 把複合指令切開，逐段檢查
-	for (const part of cmd.split(/;|&&|\|\||\|/)) {
+	// 用 換行 ; & && || | 把複合指令切開，逐段檢查
+	// !! 一定要切換行：否則下一行的參數（例如 -NoProfile）會被算到 rm 頭上而誤擋
+	for (const part of cmd.split(/\r?\n|;|&&|\|\||\||&/)) {
 		const tokens = part.trim().split(/\s+/);
-		const rmIndex = tokens.findIndex((t) => t === 'rm' || t.endsWith('/rm'));
+		const rmIndex = tokens.findIndex((t) => t === 'rm' || t.endsWith('/rm') || POWERSHELL_REMOVE.has(t.toLowerCase()));
 		if (rmIndex === -1) continue;
 
 		let recursive = false;
 		let force = false;
 		for (const t of tokens.slice(rmIndex + 1)) {
-			if (t === '--recursive') recursive = true;
-			else if (t === '--force') force = true;
-			else if (/^-[a-zA-Z]+$/.test(t)) {
+			const word = t.toLowerCase();
+			if (word === '--recursive') recursive = true;
+			else if (word === '--force') force = true;
+			// > bash 的短參數串：只認 rm 真的有的字母，避免把 -NoProfile 這類長參數拆成字母
+			else if (/^-[fiIrRdv]+$/.test(t)) {
 				if (/[rR]/.test(t)) recursive = true;
 				if (/f/.test(t)) force = true;
+			}
+			// > PowerShell 參數可縮寫且不分大小寫：-Recurse、-Rec、-Force、-Fo 都算
+			else if (/^-[a-z]{2,}$/.test(word)) {
+				if ('-recurse'.startsWith(word)) recursive = true;
+				if ('-force'.startsWith(word)) force = true;
 			}
 		}
 		if (recursive && force) return true;

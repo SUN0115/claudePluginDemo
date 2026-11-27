@@ -25,6 +25,13 @@ const blocked = [
 	'rm -fr ./build',
 	'rm --recursive --force tmp',
 	'npm run build && rm -Rf out',
+	'echo start\nrm -rf dist',
+	'npm run build & rm -rf out',
+	// > PowerShell（Windows 上的 Antigravity 用 PowerShell 執行指令）
+	'rm -Recurse -Force dist',
+	'rm dist -r -fo',
+	'Remove-Item -Recurse -Force .\\dist',
+	'ri -Force -Recurse build',
 ];
 
 const allowed = [
@@ -35,6 +42,12 @@ const allowed = [
 	'rm -r emptydir',
 	'ls -rf',
 	'npm test',
+	// > 換行要切開：下一行的參數不能算到 rm 頭上
+	'rm -f tmp.txt\npowershell -NoProfile -Command "Get-Date"',
+	'rm -f tmp.txt\r\ngit status -r',
+	'rm -f a.txt -NoProfile',
+	'Remove-Item -Force tmp.txt',
+	'Remove-Item -Recurse emptydir',
 ];
 
 for (const cmd of blocked) {
